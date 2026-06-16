@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<link
+rel="stylesheet"
+
+href="../style.css">
+
+</head>
+
+<body>
+
+<section>
+
+<a
+class="button"
+
+href="../index.html">
+
+← Back to Portfolio
+
+</a>
+
+<br></br>
+
+<h1>
+Movement Framework
+</h1>
+
+<div class="card">
+
+<img src="../images/preview.png">
+
+</div>
+
+<br></br>
+
+<div class="card">
+<h2>
+Problem
+</h2>
+<p>
+Many first-person movement systems focus on simplicity, but feel restrictive during fast-paced movement.
+<br>Actions often happen independently, which can make movement feel less responsive and reduce player control.</br>
+</p>
+<p>
+This project shows how different movement mechanics can work together as part of a single system. The goal was to create a responsive modular <br>movement framework in Unity that allows different mechanics to interact without conflicting with each other.</br>
+</p>
+<p>
+To improve player control, several mechanics were implemented and designed to solve specific interaction problems. <br>Camera-based dashing aligns movement with player intention, dash canceling increases flexibility during movement,<br>and bullet time gives more time to react during high-speed actions.</br></br>
+</p>
+</div>
+
+<br></br>
+
+<div class="card">
+
+<h3>
+Mechanics:
+</h3>
+
+<div class="mechanics-nav">
+<a href="#movement">Movement</a>
+<a href="#dash">Dash</a>
+<a href="#camera-dash">Camera Dash</a>
+<a href="#dash-cancel">Dash Cancel</a>
+<a href="#bullet-time">Bullet Time</a>
+<a href="#combined-mechanics">Mechanics Interaction</a>
+</div>
+
+</div>
+
+<br></br>
+
+<div class="card">
+<section id="movement">
+<div class="card"> 
+<h4>Movement</h4>
+<p></p>
+<video controls width="100%">
+<source src="../demo mp4's/Movement.mp4">
+</video>
+<p>Base movement system was designed to treat input not as isolated actions, 
+but as modifiable behaviour, as a foundation that supports additional mechanics.</p>
+<p>Acceleration, momentum, and state transitions are structured in a way that allow expansion 
+and additions, without large changes to the core of the system</p>
+<p>As a result: smoother movement, and a framework that supports mechanics interactions</p>
+<img src="../images/Movement Diagram.png"
+class="diagram">
+</section>
+</div>
+
+<br></br>
+
+<div class="card">
+<section id="dash">
+<h4>Dash</h4>
+<p></p>
+<video controls width="100%">
+<source src="../demo mp4's/Dash.mp4">
+</video>
+<p>The dash mechanic was introduced to improve short-range mobility and five player an advantage in meneuverability.
+<br>The goal was to provide quick repositioning based on players agency. The system applies temporary acceleration <br>while still remaining compatible with existing movement behavior and other mechanics.</br></br></p>
+<img src="../images/dash diagram.png"
+class="diagram">
+<div class="code-example">
+<pre><code>
+public override void Enter()
+{
+    timer = 0f;
+    dashTime = player.playerData.dashDuration;
+    doubleTapTime = player.playerData.dashDuration;
+
+    storedVelocity = player.rb.linearVelocity;
+
+    baseDashImpulse = player.playerData.dashImpulse;
+    dashImpBonus = 1f;
+    PerformModifierCheck();
+
+
+    //calculation of angle, for bobbing camera effect
+    float Tilt = 0f;
+    float sideDot = Vector3.Dot(dashDirection, player.orientation.right);
+    Tilt = sideDot * 5f;
+    
+    player.playerCam.DoTilt(Tilt);
+    player.playerCam.DoFOVKick();
+}
+
+public void PerformModifierCheck()
+{
+    //does a check for applicable modifiers or changes in behaviour
+if(!player.omniDirDash)
+{
+    //checks direction input for performing dash
+    if(player.desiredMoveDir.sqrMagnitude < 0.01f)
+        dashDirection = player.orientation.forward;
+    else
+        dashDirection = player.desiredMoveDir.normalized;
+}
+    else if(player.omniDirDash)
+    {
+        baseDashImpulse *= 5f;
+        dashImpBonus /= player.playerData.dashImpOverride;
+
+        dashDirection = player.playerCam.whereAmILooking.forward;
+        DoDash();
+    }
+
+    if(player.dashDampenerOverride)
+        dashImpBonus *= player.playerData.dashImpOverride;
+
+    dashImpulse = baseDashImpulse * dashImpBonus;
+}
+
+public void DoDash()
+{
+    player.rb.linearVelocity += dashDirection * dashImpulse;
+}
+</code></pre>
+</div>
+</section>
+</div>
+
+<br></br>
+
+<div class="card">
+<section id="camera-dash">
+<h4>Camera-input based Dash</h4>
+<p></p>
+<video controls width="100%">
+<source src="../demo mp4's/Camera-Input based Dash.mp4">
+</video>
+<p>Traditional directional movement relies on movement input, which can create a disconnect 
+between player intention and actual resulted movement direction. 
+<br>This mechanic changes dash direction to follow camera orientation instead. Using the camera as the directional 
+reference makes movement feel more intuitive and aligned with visual focus.</br></p>
+<img src="../images/camera dash diagram.png"
+class="diagram">
+<div class="code-example">
+<pre><code>
+if(player.omniDirDash)
+        {
+            baseDashImpulse *= 5f;
+            dashImpBonus /= player.playerData.dashImpOverride;
+
+                            //whereAmILooking is an object, from rotation of which the vector of camera input is calculated
+            dashDirection = player.playerCam.whereAmILooking.forward;
+            DoDash();
+        }
+</code></pre>
+</section>
+</div>
+
+<br></br>
+
+<div class="card">
+<section id="dash-cancel">
+<h4>Dash Cancel</h4>
+<p></p>
+<video controls width="100%">
+<source src="../demo mp4's/Dash Cancel.mp4">
+</video>
+<p>The dash cancel mechanic allows movement actions to be interrupted before completion. This reduces commitment to a single action and increases flexibility during movement.</p>
+<p>Result: greater player agency and compatibility between mechanics.</p>
+<img src="../images/bullet time diagram.png"
+class="diagram2">
+<div class="code-example">
+<pre><code>
+public void ReadInput()
+{
+                                                    //if this is active
+    if(Input.GetKeyDown(player.playerData.dashKey) && player.dashDampenerOverride)
+    {
+        //and button has been pressed within a time slot
+        if(Time.time - lastShiftPressTime <= doubleTapTime)
+        {
+            player.playerCam.DoTilt(0f);
+
+
+            //dash is being cancelled and state being changed, without dampeining the movement velocity
+            if(!player.grounded)
+                player.ChangeState(player.airState);
+            else if(player.sprintHeld)
+                player.ChangeState(player.sprintState);
+            else
+                player.ChangeState(player.walkState);
+        }
+
+        lastShiftPressTime = Time.time;
+    }
+}
+</code></pre>
+</div>
+</section>
+</div>
+
+<br></br>
+
+<div class="card">
+<section id="bullet-time">
+<h4>Bullet Time</h4>
+<p></p>
+<video controls width="100%">
+<source src="../demo mp4's/Bullet Time.mp4">
+</video>
+<p>Bullet time was introduced to improve decision-making during high-speed movement by temporarily extending reaction time.</p>
+<p>Result: improved interaction quality during fast-paced situations.</p>
+<div class="code-example">
+<pre><code>
+public override void Update()
+{
+    timer += Time.unscaledDeltaTime / player.playerData.bulletTimePower;
+    if(timer >= Duration)
+        IsActive = false;
+
+    base.Update();
+
+        ReadInput();
+
+    if(IsActive)
+    {
+        Time.timeScale = player.playerData.bulletTimePower;
+    }
+
+    if(Duration - timer > 0)
+        player.playerData.remainingBulletTime = Duration - timer;
+    if(Duration <= 0.1f)
+        player.playerData.remainingBulletTime = player.playerData.bulletTimeDuration;
+}
+
+public void ReadInput()
+{
+    scrollTimer -= Time.unscaledDeltaTime;
+
+    if(scrollTimer <= 0f)
+    {
+
+        //changes degree to which time slows
+        if(player.mouseWheelScroll > 0f)
+        {
+            player.playerData.bulletTimePower += player.playerData.bulletTimeScale;
+            player.playerData.bulletTimePower = Mathf.Clamp(player.playerData.bulletTimePower, 0.1f, 1f);
+            scrollTimer = scrollCooldown;
+        }
+        else if(player.mouseWheelScroll < 0f)
+        {
+            player.playerData.bulletTimePower -= player.playerData.bulletTimeScale;
+            player.playerData.bulletTimePower = Mathf.Clamp(player.playerData.bulletTimePower, 0.1f, 1f);
+            scrollTimer = scrollCooldown;
+        }
+    }
+    
+    if(player.mouseWheelScroll > 0f && player.playerData.bulletTimePower == 1f)
+        IsActive = false;
+
+    if(!IsActive && player.bulletTimeIsActive)
+    {
+        Time.timeScale = 1f;
+        player.playerData.bulletTimePower = 1f;
+        player.bulletTimeIsActive = false;
+        player.playerCam.bulletTimeIsActive = false;
+    }
+}
+</code></pre>
+</section>
+</div>
+
+<br></br>
+
+<div class="card">
+<section id="combined-mechanics">
+<h4>Mechanics Interaction</h4>
+<p></p>
+<video controls width="100%">
+<source src="../demo mp4's/Camera Dash + Cancel (2).mp4">
+</video>
+<p>Together these mechanics that are built on a modular frame are able to produce results that are bigger than simply sum of its parts</p>
+</section>
+</div>
+
+<br></br>
+
+<a
+class="button"
+
+href="../index.html">
+
+← Back to Portfolio
+
+</a>
+
+</section>
+
+</body>
+
+</html>
